@@ -104,6 +104,7 @@ params.method="gatk-hc"
   Output directory
 ---------------------------------------------------*/
 params.resultdir = "./Results";
+params.skip_plot_vcf = false
 
 //============================================================================================================================
 //        PROCESSES
@@ -211,6 +212,37 @@ process run_variant_caller {
     pwd=\$PWD
     cd ~/freebayes/scripts/
     ./freebayes-parallel <(./fasta_generate_regions.py \$pwd/${fasta[2]} 100000) ${task.cpus} -f \$pwd/${fasta[1]} \$pwd/${bam[1]} > \$pwd/calling_output.vcf
+    """
+}
+
+
+
+/*
+ * Generate plot from output vcf file
+ */
+process vcf_plot {
+    tag "$vcf"
+    publishDir "${params.resultdir}", mode: 'copy'
+    container 'lifebitai/vcfr:latest'
+
+    when:
+    !params.skip_plot_vcf
+
+		input:
+    file vcf from methods_result
+
+		output:
+    file 'Rplots.pdf' into plot
+
+		script:
+    """
+    #!/usr/bin/env Rscript
+
+		library(vcfR)
+    vcf_file <- "${vcf}"
+    vcf <- read.vcfR(vcf_file, verbose = FALSE)
+    plot(vcf)
+    dev.off()
     """
 }
 
